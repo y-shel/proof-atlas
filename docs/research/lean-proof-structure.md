@@ -2,6 +2,8 @@
 
 Research date: 2026-11-22. This is a source-grounded feasibility study, not a tested extractor or an approved implementation design. Proposed rules below are engineering recommendations; they have not yet been validated against a corpus.
 
+Follow-up: a [native evidence-reading experiment](../../experiments/native-extraction/README.md) now demonstrates access to tactic records, term records, and final proof expressions on four core Lean fixtures. It does not validate the proposed chunking or graph rules. References below to experiments not yet run concern the corpus comparison and graph validation.
+
 ## Recommendation
 
 Use a hybrid of Lean's elaboration information and the resulting proof expressions. Preserve the raw evidence, then derive deterministic, versioned views of it. The default readable chunks should follow source-level proof actions and explicit subproofs; a separate expression view should expose what those actions constructed. Treat automation as an expandable operation whose internal structure is available only to the extent actually recorded.

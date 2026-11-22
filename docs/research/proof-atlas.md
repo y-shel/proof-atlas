@@ -2,6 +2,8 @@
 
 Research date: 2026-11-22. This document records the user's goals and a proposed direction. It is not an approved implementation design. The technical extraction study is in [lean-proof-structure.md](lean-proof-structure.md).
 
+Follow-up: a [native evidence-reading experiment](../../experiments/native-extraction/README.md) has run on four core fixtures. It establishes access to elaboration records and proof expressions, but no graph or UI has been built.
+
 ## User intent
 
 Give a mathematician tools to solve the riddle of an unfamiliar Lean proof. Discover chunks and their relationships mechanically. Explain each chunk from its local context, assemble a graph-informed narrative, and let the mathematician refine its meaning with an LLM. Structure must be robust even when the mathematical interpretation is tentative. Require no supplied informal proof or narrative metadata.
