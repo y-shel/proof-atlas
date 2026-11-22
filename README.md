@@ -10,8 +10,6 @@ No informal proof, blueprint, or author-written synopsis should be required. The
 
 Research and an experimental Lean evidence reader. No graph extractor or web application has been implemented yet.
 
-- [Lean extraction research](docs/research/lean-proof-structure.md)
-- [Explanation and web explorer proposal](docs/research/proof-atlas.md)
 - [Running extraction experiment and observed output](experiments/native-extraction/README.md)
 
 The proposed first experiment compares Paperproof's terminal extractor with a small native Lean adapter on a hand-audited corpus before choosing the extraction foundation.
