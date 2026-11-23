@@ -169,3 +169,18 @@ The CLI additionally validates the complete projection against the same once-rea
 graph before retrieval and reports that check on stderr. It guards both input
 files against output overwrite, including symbolic and hard links. Neither path
 replays Lean or adds an interpretation of the proof.
+
+Prepare a local chunk interpretation request with the same validated saved graph used by the explorer:
+
+```bash
+node scripts/interpret_chunk.mjs /tmp/graph.json --chunk CHUNK_ID --output /tmp/interpretation.json
+npm run test:interpretation
+```
+
+The default writes a deterministic, versioned request to `/tmp/interpretation.json.request.json` and a separate `prepared` artifact. It makes no model call. Use `--request-output FILE` to choose the request destination. Obtain chunk IDs with `scripts/context_packet.mjs GRAPH --list`.
+
+`--run-codex` opts into local Codex preflight. Live generation is currently unavailable because the installed CLI does not provide a verified empty tool inventory for inference. Preflight checks the CLI version and existing ChatGPT login status, then writes `unavailable` with execution `none`. It does not log in, change safety configuration, call an API, or retry. No credentials or new billing are needed for preparation.
+
+Limits are `--packet-bytes`, `--request-bytes`, `--response-bytes`, `--artifact-bytes`, and `--timeout-ms`. Defaults are 128 KiB, 256 KiB, 32 KiB, 64 KiB, and 30 seconds. Packet, request and artifact bounds count complete canonical JSON including the emitted final newline. The response bound counts the raw supplied UTF8 response string, including any whitespace it contains. Nonready packets produce a status without partial proof evidence. The CLI validates the saved projection before preparation; it does not replay Lean.
+
+The reusable `scripts/interpretation.mjs` validates explicitly simulated response JSON with `readings: [{text, citations: [index]}]` and `unknowns: [text]`. Citation indices refer to the request packet's citation list and become exact graph anchors in the separate result. Simulation artifacts say `execution: simulated`; they do not demonstrate live provider behavior. Empty readings require explicit unknowns. All prose remains tentative and unverified. Citation validation does not establish its mathematical meaning, rank a preferred reading, or contradict a human claim. Malformed request envelopes and tampered simulation requests are input errors before transport; malformed responses produce `invalid_response`.
