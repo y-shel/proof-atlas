@@ -8,7 +8,7 @@ No informal proof, blueprint, or author-written synopsis should be required. The
 
 ## Current state
 
-A native Lean JSON evidence exporter and an earlier text inspection experiment. No graph projection or web application is implemented.
+A native Lean JSON evidence exporter, a checked graph projection, and an earlier text inspection experiment. No web application is implemented.
 
 - [Running extraction experiment and observed output](experiments/native-extraction/README.md)
 
@@ -29,3 +29,29 @@ The exporter uses only modules in the installed Lean toolchain. Project dependen
 `captureStatus` describes capture of the advertised capabilities, not proof trust. Assignment witnesses, complete metavariable contexts, metadata contents, namespace/options snapshots, and transitive axiom scans are unavailable or partial. Unsupported information payloads retain occurrence placeholders and children. Direct `sorryAx` occurrences are reported separately from diagnostics. Local hypothesis presence does not establish premise use, and goal-list disappearance does not establish solving.
 
 Core-only integration checks cover repeated tactic executions, term-only proofs, local contexts, Unicode byte ranges, shadowed names, large literal fidelity, admission reporting, and explicit failure cases. The original experiment remains runnable.
+
+## Project a proof graph
+
+```sh
+python3 scripts/project_graph.py /tmp/repeated.json \
+  --source experiments/native-extraction/Fixtures.lean --output /tmp/repeated-graph.json
+```
+
+The source bytes must match the evidence SHA-256. The graph includes verified UTF-8
+source text, the full evidence artifact, typed nodes and edges, and versioned source-region
+groups. IDs are local to the embedded artifact. `project_graph(evidence, source_bytes)`
+and `validate_graph(graph, evidence, source_bytes)` are pure Python entry points in
+`scripts/project_graph.py`. Validation reconstructs this projection version and rejects
+changed witnesses, endpoints, omitted evidence, and altered source labels.
+
+Every structural edge has an evidence path. Reference witnesses point to actual `fvar`
+or `const` expression constructors. Constants use structural Lean Names. Local symbols
+retain separate context appearances and types. A reference means syntactic occurrence;
+it does not establish a necessary premise. Goal identities and snapshots remain separate.
+
+Chunks group source regions by declaration, record kind, syntax kind and exact provenance
+and range. Repeated executions share a source group and keep their own occurrence and
+state nodes. Groups are a readable view, not execution identities or a unique mathematical
+partition. Known structural wrappers and synthetic or missing ranges have
+`defaultVisible: false`; they remain in the graph. Unknown source actions stay visible.
+Term proofs have term groups. Capability limits and unknown payloads remain explicit.
