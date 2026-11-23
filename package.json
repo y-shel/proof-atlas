@@ -6,6 +6,7 @@
     "dev": "vite web --host 127.0.0.1",
     "build": "vite build web --outDir ../dist --emptyOutDir",
     "test:web": "node tests/web-model.test.js",
+    "test:packets": "node tests/context-packet.test.js",
     "demo": "python3 scripts/prepare_web_demo.py"
   },
   "dependencies": {

@@ -7,10 +7,12 @@ import {
   witnessValue,
 } from "./graph-model.js";
 import { createCanvas } from "./graph-canvas.js";
+import { buildContextPacket, serializeContextPacket, contextPacketBytes } from "./context-packet.js";
 const $ = (id) => document.getElementById(id);
 let model = null,
   view = null,
-  current = null;
+  current = null,
+  packetText = null;
 const graph = createCanvas($("graph"), selectChunk);
 function el(tag, text) {
   const n = document.createElement(tag);
@@ -92,6 +94,7 @@ function renderBasis() {
 function selectChunk(id) {
   if (!model) return;
   current = id;
+  renderPacket();
   graph.select(id);
   for (const b of $("chunks").children)
     b.setAttribute("aria-pressed", String(b.dataset.id === id));
@@ -214,6 +217,35 @@ function selectChunk(id) {
   details($("inspector"), "Coverage and limits", model.graph.limitations);
   details($("inspector"), "Full immutable graph artifact", model.graph);
 }
+function renderPacket() {
+  packetText = null;
+  $("packet-download").disabled = true;
+  $("packet-preview").textContent = "";
+  if (!model || !current) {
+    $("packet-status").textContent = "Select a source chunk.";
+    return;
+  }
+  try {
+    const bound = Number($("packet-budget").value);
+    const packet = buildContextPacket(model, current, { maxBytes: bound });
+    packetText = serializeContextPacket(packet);
+    $("packet-preview").textContent = packetText;
+    $("packet-status").textContent = packet.status + " · " + contextPacketBytes(packet) + " / " + bound + " bytes" + (packet.requiredBytes ? " · complete context requires " + packet.requiredBytes + " bytes" : "") + (packet.reason ? " · " + packet.reason : "");
+    $("packet-download").disabled = false;
+  } catch (error) {
+    $("packet-status").textContent = error.message;
+  }
+}
+$("packet-build").onclick = renderPacket;
+$("packet-download").onclick = () => {
+  if (!packetText) return;
+  const url = URL.createObjectURL(new Blob([packetText], { type: "application/json" }));
+  const link = el("a");
+  link.href = url;
+  link.download = "proof-atlas-context-packet.json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 $("demo").onclick = async () => {
   try {
     const r = await fetch("/demo.json");

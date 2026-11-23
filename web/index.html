@@ -53,6 +53,16 @@
         <p id="scope">Select a chunk to inspect all its recorded executions.</p>
         <h3>Source</h3>
         <pre id="source">Verified source bytes appear here after loading.</pre>
+        <section aria-label="Selected context packet">
+          <h3>Selected context packet</h3>
+          <p>Captured local evidence only. Declaration axiom provenance applies to the declaration. No interpretation is added.</p>
+          <label for="packet-budget">UTF-8 byte bound, including final newline</label>
+          <input id="packet-budget" type="number" min="1" step="1" value="131072" />
+          <button id="packet-build">Build packet</button>
+          <button id="packet-download" disabled>Download packet</button>
+          <p id="packet-status" role="status">Select a source chunk.</p>
+          <details><summary>Read packet JSON</summary><pre id="packet-preview"></pre></details>
+        </section>
         <div id="inspector"></div>
       </aside>
     </main>

@@ -17,7 +17,7 @@ try {
   await page.setViewport({ width: 1500, height: 1000 });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("http://127.0.0.1:5173");
+  await page.goto(process.env.PROOF_ATLAS_URL ?? "http://127.0.0.1:5173");
   await page.click("#demo");
   await page.waitForSelector(".chunk");
   async function assertFit() {

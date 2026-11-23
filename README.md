@@ -100,3 +100,36 @@ python3 scripts/project_graph.py /tmp/axiom-evidence.json --source experiments/n
 ```
 
 Open `/tmp/axiom-graph.json` in the local explorer. `tallyAppend` proves two append equations by list induction and Boolean branches, reusing a local equality. Its recorded basis includes `propext` through simplification. The other declarations distinguish an empty basis, direct and reachable admission, arbitrary axioms, and an axiom in a declaration type.
+
+## Selected context packets
+
+The selected-packet panel builds or downloads local evidence for the selected chunk.
+It keeps every selected occurrence, input/output snapshot, goal identity, ordered local
+context and referenced captured expression. Axiom provenance is explicitly scoped to
+the declaration. Other branches and descendant records stay accessible through artifact
+IDs and graph-root JSON path arrays. Constant definitions are unavailable in this capture.
+Packets contain no proof interpretation.
+
+```sh
+node scripts/context_packet.mjs /tmp/repeated-graph.json --list
+node scripts/context_packet.mjs /tmp/repeated-graph.json --chunk CHUNK_ID \
+  --output /tmp/context.json --max-bytes 131072
+npm run test:packets
+# With the local explorer running and Chromium at /sbin/chromium:
+node tests/context-packet-browser.mjs
+```
+
+`web/context-packet.js` exports `buildContextPacket(model, chunkId, {maxBytes})`
+for models returned by `loadGraph`, plus `serializeContextPacket` and
+`contextPacketBytes`. The CLI validates the complete saved projection before using
+the same builder and serializer. Browser packets verify source SHA-256, selected
+membership and local reference scopes, without reconstructing the whole graph or
+rerunning Lean. This is an integrity check, not proof validity.
+
+The default bound is 128 KiB of canonical UTF-8 JSON, including its final newline.
+`ready` includes the complete captured local closure under `selected-local-closure.v0`.
+`over_limit` gives the required byte count and retrieval anchors with no partial evidence.
+`unavailable` reports missing or unsupported required evidence. A bound too small for
+the status envelope fails explicitly. The generated medium fixture's `have shared`
+chunk needs about 150 KiB; a 256 KiB bound includes it without changing its boundary.
+The selected source fragment is included, rather than the full source or graph.

@@ -1,5 +1,7 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
+const verifiedModels = new WeakSet();
+export const isVerifiedGraphModel = (model) => verifiedModels.has(model);
 function freeze(value) {
   if (value && typeof value === "object") {
     Object.values(value).forEach(freeze);
@@ -173,7 +175,7 @@ export async function loadGraph(input) {
     }
   }
   freeze(g);
-  return Object.freeze({
+  const model = Object.freeze({
     graph: g,
     declarations: g.evidence.declarations,
     chunks: (id, hidden = false) =>
@@ -181,6 +183,8 @@ export async function loadGraph(input) {
         (c) => c.declarationId === id && (hidden || c.defaultVisible),
       ),
   });
+  verifiedModels.add(model);
+  return model;
 }
 export function sourceParts(m, c) {
   const s = c?.source;
