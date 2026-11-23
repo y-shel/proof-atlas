@@ -2,13 +2,15 @@
 
 A research project for exploring Lean proofs through mechanically extracted structure and revisable explanations.
 
-The goal is to turn a Lean proof into a graph of source actions, subproofs, goals, and formal references. An LLM explains individual chunks from their local formal context, then uses the graph to suggest a larger story. A mathematician can question, annotate, and refine that story while inspecting the evidence.
+The goal is to turn a Lean proof into a graph of source actions, subproofs, goals, and formal references. A mathematician and an LLM can use that evidence to compare possible readings, without a preferred solution path. Corrective interventions must rely on a Lean-verified contradiction under explicit assumptions and an agreed formalization of the human claim.
+
+Development starts with small, then medium, LLM-generated proofs. Riemann-scale candidate proof exploration is the long-term target.
 
 No informal proof, blueprint, or author-written synopsis should be required. The Lean project and its dependencies still supply the formal environment.
 
 ## Current state
 
-A native Lean JSON evidence exporter, a checked graph projection, and an earlier text inspection experiment. No web application is implemented.
+A native Lean JSON evidence exporter, a checked graph projection, and a local Canvas/D3 web explorer. Chat and formal contradiction checking remain future work.
 
 - [Running extraction experiment and observed output](experiments/native-extraction/README.md)
 
@@ -55,3 +57,35 @@ state nodes. Groups are a readable view, not execution identities or a unique ma
 partition. Known structural wrappers and synthetic or missing ranges have
 `defaultVisible: false`; they remain in the graph. Unknown source actions stay visible.
 Term proofs have term groups. Capability limits and unknown payloads remain explicit.
+
+## Local web explorer
+
+Requires Node 22.12+ and the pinned Lean toolchain used by the native exporter.
+
+```sh
+npm install
+npm run demo
+npm run dev
+```
+
+Open the printed local URL, then choose **Open prepared sample** or load a saved
+`proof-atlas.graph.v0` JSON file. The sample is regenerated from
+`experiments/native-extraction/Fixtures.lean` through the committed native exporter
+and graph projector. Generated demo data stays ignored.
+
+The chunk list and canvas show source groups. Links trace recorded containment;
+they do not establish mathematical necessity. Selecting a chunk shows original
+UTF-8 source bytes after a SHA-256 integrity check, every recorded occurrence,
+goal snapshots, ordered local contexts, and typed-edge witnesses. Hidden records
+remain available. Imported graphs are not rechecked in Lean by the browser.
+
+```sh
+npm run test:web
+npm run build
+# With the dev server running and Chromium at /sbin/chromium:
+node tests/web-browser.mjs
+```
+
+The app bundles its dependencies and has no chat, ingestion API, or CDN runtime
+requirement. Loading a graph does not upload it. Keep competing readings separate
+from extracted facts; this slice supplies evidence inspection only.

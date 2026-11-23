@@ -1,0 +1,263 @@
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color: #dce8f4;
+  background: #0b1322;
+  font-size: 16px;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+header {
+  height: 80px;
+  border-bottom: 1px solid #2b3b50;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 28px;
+  background: #101d30;
+}
+header > div {
+  flex: 1;
+}
+strong {
+  font-size: 24px;
+  letter-spacing: -0.6px;
+}
+header span {
+  display: block;
+  color: #9aafc6;
+  font-size: 14px;
+  margin-top: 4px;
+}
+button,
+.file,
+select {
+  font: inherit;
+  color: inherit;
+  background: #1b2c43;
+  border: 1px solid #3b516c;
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+button:hover,
+.file:hover {
+  background: #29435c;
+}
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #7de3cf;
+  outline-offset: 3px;
+}
+.file input {
+  display: block;
+  max-width: 205px;
+  font-size: 14px;
+  margin-top: 5px;
+}
+#status {
+  padding: 12px 28px;
+  color: #a8c2d6;
+  font-size: 14px;
+  border-bottom: 1px solid #27364b;
+  min-height: 44px;
+}
+main {
+  display: grid;
+  grid-template-columns: 248px minmax(350px, 1fr) 390px;
+  height: calc(100vh - 124px);
+}
+nav,
+aside {
+  padding: 22px 18px;
+  overflow: auto;
+  background: #101b2c;
+}
+nav {
+  border-right: 1px solid #28374c;
+}
+aside {
+  border-left: 1px solid #28374c;
+}
+h1 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+}
+h2 {
+  font-size: 17px;
+  overflow-wrap: anywhere;
+  margin: 24px 0 12px;
+}
+h3 {
+  font-size: 16px;
+}
+h4 {
+  font-size: 14px;
+  color: #a9c8d9;
+}
+p,
+small {
+  color: #a6bad0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+label {
+  font-size: 14px;
+}
+select {
+  width: 100%;
+  margin-top: 10px;
+}
+.toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.5;
+  margin: 22px 0;
+}
+.chunk {
+  display: block;
+  text-align: left;
+  width: 100%;
+  margin: 8px 0;
+  padding: 12px;
+  background: transparent;
+  border-color: #2a3a50;
+  overflow-wrap: anywhere;
+}
+.chunk span {
+  display: block;
+  font:
+    14px ui-monospace,
+    monospace;
+  white-space: pre-wrap;
+}
+.chunk small {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+}
+.chunk[aria-pressed="true"] {
+  border-color: #71d7c5;
+  background: #183438;
+}
+#workspace {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 44%, #142337, #0b1322 80%);
+}
+.canvas-heading {
+  position: absolute;
+  top: 22px;
+  left: 24px;
+  right: 24px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.canvas-heading button {
+  pointer-events: auto;
+  font-size: 14px;
+}
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+.legend {
+  position: absolute;
+  bottom: 16px;
+  left: 24px;
+  right: 20px;
+  pointer-events: none;
+  font-size: 14px;
+}
+pre {
+  font:
+    14px/1.65 ui-monospace,
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #0b1423;
+  border: 1px solid #293b50;
+  padding: 14px;
+  border-radius: 5px;
+  max-height: 450px;
+  overflow: auto;
+}
+mark {
+  background: #26594e;
+  color: #edfff8;
+  padding: 2px 0;
+}
+details {
+  border-bottom: 1px solid #2a3c52;
+  padding: 12px 0;
+}
+summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.execution {
+  margin-top: 24px;
+  padding-top: 10px;
+  border-top: 1px solid #4d617b;
+}
+.execution h3 {
+  overflow-wrap: anywhere;
+}
+#scope {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1050px) {
+  main {
+    grid-template-columns: 220px 1fr;
+    height: auto;
+  }
+  #workspace {
+    height: 65vh;
+  }
+  aside {
+    grid-column: 1/-1;
+    max-height: 70vh;
+  }
+  nav {
+    max-height: 65vh;
+  }
+  header {
+    height: auto;
+    flex-wrap: wrap;
+  }
+  #status {
+    min-height: 44px;
+  }
+}
+@media (max-width: 600px) {
+  main {
+    display: block;
+  }
+  nav {
+    max-height: 45vh;
+  }
+  #workspace {
+    height: 55vh;
+  }
+  header {
+    padding: 16px;
+  }
+  header > div {
+    flex-basis: 100%;
+  }
+}

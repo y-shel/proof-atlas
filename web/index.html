@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Proof Atlas · local explorer</title>
+  </head>
+  <body>
+    <header>
+      <div>
+        <strong>Proof Atlas</strong><span>Local evidence explorer</span>
+      </div>
+      <button id="demo">Open prepared sample</button
+      ><label class="file"
+        >Open graph JSON<input
+          id="file"
+          type="file"
+          accept=".json,application/json"
+      /></label>
+    </header>
+    <div id="status" role="status">
+      Open a saved proof-atlas.graph.v0 artifact. Files stay in this browser.
+    </div>
+    <main>
+      <nav aria-label="Proof navigation">
+        <label for="declaration">Declaration</label
+        ><select id="declaration" disabled></select
+        ><label class="toggle"
+          ><input id="hidden" type="checkbox" /> Show hidden / generated
+          records</label
+        >
+        <h2>Source chunks</h2>
+        <p id="count">No artifact loaded</p>
+        <div id="chunks"></div>
+      </nav>
+      <section id="workspace" aria-label="Graph overview">
+        <div class="canvas-heading">
+          <h1>Explore the recorded structure</h1>
+          <button id="reset">Fit graph</button>
+        </div>
+        <canvas
+          id="graph"
+          aria-label="Source chunks. Use the chunk list to select with a keyboard."
+        ></canvas>
+        <p class="legend">
+          Teal · tactics &nbsp; Lavender · terms<br />Links show recorded
+          containment, not mathematical necessity. Pan and scroll to zoom.
+        </p>
+      </section>
+      <aside>
+        <h2 id="selection">Source and evidence</h2>
+        <p id="scope">Select a chunk to inspect all its recorded executions.</p>
+        <h3>Source</h3>
+        <pre id="source">Verified source bytes appear here after loading.</pre>
+        <div id="inspector"></div>
+      </aside>
+    </main>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
