@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
   loadGraph,
+  declarationBasis,
   sourceParts,
   overview,
   witnessValue,
@@ -96,4 +97,50 @@ test("rejects renderer labels and broken inspector references before publishing 
   const context = structuredClone(raw);
   Object.values(context.evidence.contexts)[0].locals = null;
   await assert.rejects(loadGraph(context), /context/i);
+});
+
+test("declaration basis preserves collected and unavailable provenance", async () => {
+  const declaration = { proofStatus: { containsSorry: false, axiomAudit:
+    { status: "collected", axioms: [], containsAdmission: false } } };
+  assert.deepEqual(declarationBasis(declaration), {
+    status: "collected", axioms: [], containsAdmission: false, directAdmission: false,
+  });
+  for (const status of ["unknown", "error"]) {
+    declaration.proofStatus.axiomAudit = { status, reason: "not available" };
+    assert.equal(declarationBasis(declaration).status, status);
+    assert.equal(declarationBasis(declaration).reason, "not available");
+    assert.equal(declarationBasis(declaration).containsAdmission, null);
+  }
+  delete declaration.proofStatus.axiomAudit;
+  declaration.proofStatus.transitiveTrust = "unscanned";
+  assert.equal(declarationBasis(declaration).status, "unknown");
+  for (const audit of [null, [], {status: "collected"},
+    {status: "collected", axioms: [], containsAdmission: true},
+    {status: "collected", axioms: [{tag: "str", value: "bad"}], containsAdmission: false},
+    {status: "unknown", reason: "missing", axioms: []},
+    {status: "approved"}]) {
+    declaration.proofStatus.axiomAudit = audit;
+    assert.equal(declarationBasis(declaration).status, "error");
+    assert.equal(declarationBasis(declaration).containsAdmission, null);
+  }
+  const graph = structuredClone(raw);
+  graph.evidence.declarations[0].proofStatus = declaration.proofStatus;
+  const model = await loadGraph(graph);
+  assert.equal(declarationBasis(model.declarations[0]).status, "error");
+});
+
+test("axiom Names use Lean structural ordering and exact numeric components", () => {
+  const anonymous = {tag: "anonymous"};
+  const name = value => ({tag: "str", parent: anonymous, value});
+  const declaration = {proofStatus: {axiomAudit: {
+    status: "collected", containsAdmission: false,
+    axioms: [{tag: "num", parent: anonymous, value: "9007199254740992"},
+      {tag: "num", parent: anonymous, value: "9007199254740993"}, name("Ｚ"), name("𝕫")],
+  }}};
+  assert.equal(declarationBasis(declaration).status, "collected");
+  const axioms = declaration.proofStatus.axiomAudit.axioms;
+  [axioms[2], axioms[3]] = [axioms[3], axioms[2]];
+  assert.equal(declarationBasis(declaration).status, "error");
+  declaration.proofStatus.axiomAudit.axioms = [name("same"), name("same")];
+  assert.equal(declarationBasis(declaration).status, "error");
 });

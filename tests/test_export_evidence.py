@@ -43,7 +43,7 @@ class ExportTests(unittest.TestCase):
         self.assertEqual([v['displayNameText'] for v in context['locals']], ['localFact', 'p', 'q', 'hp', 'h'])
         self.assertTrue(snapshot['targetExpressionId'] in data['expressions'])
         self.assertEqual(data['capabilities']['goalAssignments'], 'unavailable')
-        self.assertEqual(data['declarations'][0]['proofStatus']['transitiveTrust'], 'unscanned')
+        self.assertEqual(data['declarations'][0]['proofStatus']['axiomAudit'], {'status': 'collected', 'axioms': [], 'containsAdmission': False})
         self.assertNotIn('_uniq.', first.decode())
         boundary = runpy.run_path(str(ROOT / 'scripts/export_evidence.py'))
         broken = copy.deepcopy(data)
@@ -115,6 +115,59 @@ class ExportTests(unittest.TestCase):
                         yield from nodes(child)
             literals = [n['value'] for n in nodes(data['expressions'][eid]) if n.get('tag') == 'lit' and n.get('kind') == 'nat']
             self.assertIn('9007199254740993', literals)
+
+    def test_checked_axiom_provenance(self):
+        source = ROOT / 'experiments/native-extraction/AxiomAudit.lean'
+        names = tuple('AuditFixture.' + n for n in (
+            'constructive', 'admitted', 'viaAdmission', 'viaAxioms', 'typeDependency', 'tallyAppend', 'unicodeBasis'))
+        data, first = self.export(source, names)
+        self.assertEqual(first, self.export(source, names)[1])
+        statuses = {d['id'].split('.')[-1]: d['proofStatus'] for d in data['declarations']}
+        def name(n):
+            result = {'tag': 'anonymous'}
+            for part in n.split('.'):
+                result = {'tag': 'str', 'parent': result, 'value': part}
+            return result
+        self.assertEqual(statuses['constructive']['axiomAudit'],
+                         {'status': 'collected', 'axioms': [], 'containsAdmission': False})
+        self.assertEqual(statuses['tallyAppend']['axiomAudit']['axioms'], [name('propext')])
+        self.assertFalse(statuses['tallyAppend']['axiomAudit']['containsAdmission'])
+        self.assertTrue(statuses['admitted']['containsSorry'])
+        self.assertFalse(statuses['viaAdmission']['containsSorry'])
+        for n in ('admitted', 'viaAdmission'):
+            self.assertEqual(statuses[n]['axiomAudit'],
+                             {'status': 'collected', 'axioms': [name('sorryAx')], 'containsAdmission': True})
+        self.assertEqual(statuses['viaAxioms']['axiomAudit']['axioms'],
+                         [name('AuditFixture.anotherFalse'), name('AuditFixture.injectedFalse')])
+        self.assertEqual(statuses['typeDependency']['axiomAudit']['axioms'], [name('AuditFixture.assumedType')])
+        self.assertEqual(statuses['unicodeBasis']['axiomAudit']['axioms'],
+                         [name('AuditFixture.Ｚ'), name('AuditFixture.𝕫')])
+        projection = runpy.run_path(str(ROOT / 'scripts/project_graph.py'))
+        graph = projection['project_graph'](data, source.read_bytes())
+        self.assertEqual(graph['evidence']['declarations'], data['declarations'])
+        self.assertTrue(any(r.get('syntaxKind') == 'Lean.Parser.Tactic.induction' and
+                            r['declarationId'] == 'AuditFixture.tallyAppend' for r in data['records'].values()))
+
+    def test_audit_boundary_rejects_malformed_and_retains_unknown(self):
+        data, _ = self.export(names=('termOnly',))
+        boundary = runpy.run_path(str(ROOT / 'scripts/export_evidence.py'))
+        status = data['declarations'][0]['proofStatus']
+        for audit in ({'status': 'unknown', 'reason': 'legacy unscanned'},
+                      {'status': 'error', 'reason': 'collection failed'}):
+            status['axiomAudit'] = audit
+            boundary['validate_evidence'](data, FIXTURE.read_bytes())
+            self.assertEqual(status['axiomAudit'], audit)
+        for audit in ({'status': 'collected'},
+                      {'status': 'collected', 'axioms': [], 'containsAdmission': True},
+                      {'status': 'error', 'reason': 'failed', 'axioms': []},
+                      {'status': 'unknown'},
+                      {'status': 'collected', 'axioms': [{'tag': 'str', 'value': 'bad'}], 'containsAdmission': False}):
+            status['axiomAudit'] = audit
+            with self.assertRaises(boundary['EvidenceError']):
+                boundary['validate_evidence'](data, FIXTURE.read_bytes())
+        status.pop('axiomAudit')
+        status['transitiveTrust'] = 'unscanned'
+        boundary['validate_evidence'](data, FIXTURE.read_bytes())
 
     def test_admission_is_visible(self):
         with tempfile.TemporaryDirectory() as d:

@@ -1,6 +1,13 @@
 import puppeteer from "puppeteer-core";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { writeFile, readFile } from "node:fs/promises";
+const auditNames = ["constructive", "admitted", "viaAdmission", "viaAxioms", "typeDependency", "tallyAppend"];
+execFileSync("python3", ["scripts/export_evidence.py", "experiments/native-extraction/AxiomAudit.lean",
+  ...auditNames.flatMap(n => ["--declaration", "AuditFixture." + n]),
+  "--output", "/tmp/proof-atlas-axiom-evidence.json"]);
+execFileSync("python3", ["scripts/project_graph.py", "/tmp/proof-atlas-axiom-evidence.json",
+  "--source", "experiments/native-extraction/AxiomAudit.lean", "--output", "/tmp/proof-atlas-axiom-graph.json"]);
 const browser = await puppeteer.launch({
   executablePath: "/sbin/chromium",
   headless: true,
@@ -156,6 +163,51 @@ try {
     await page.$eval("#inspector", (n) => n.textContent),
     /Expression and context/,
   );
+  await input.uploadFile("/tmp/proof-atlas-axiom-graph.json");
+  await page.waitForFunction(() => document.querySelector("#status").textContent.startsWith("proof-atlas-axiom-graph.json"));
+  const basisText = () => page.$eval("#basis", n => n.textContent);
+  assert.match(await basisText(), /Axiom audit · collected/);
+  assert.match(await basisText(), /No axioms reported/);
+  await page.select("#declaration", "AuditFixture.admitted");
+  assert.match(await basisText(), /Direct sorryAx occurrence in declaration value · yes/);
+  assert.match(await basisText(), /Admission reachable.* · yes/);
+  assert.match(await basisText(), /"value":"sorryAx"/);
+  await page.select("#declaration", "AuditFixture.viaAdmission");
+  assert.match(await basisText(), /Direct sorryAx occurrence in declaration value · no/);
+  assert.match(await basisText(), /Admission reachable.* · yes/);
+  await page.select("#declaration", "AuditFixture.viaAxioms");
+  assert.match(await basisText(), /injectedFalse/);
+  assert.match(await basisText(), /anotherFalse/);
+  assert.match(await basisText(), /Admission reachable.* · no/);
+  assert.equal(await page.$$eval("#basis input, #basis button, #basis select", ns => ns.length), 0);
+  await page.select("#declaration", "AuditFixture.typeDependency");
+  assert.match(await basisText(), /assumedType/);
+  await page.select("#declaration", "AuditFixture.tallyAppend");
+  assert.match(await basisText(), /propext/);
+  assert.ok(await page.$$eval(".chunk", ns => ns.some(n => /induction/.test(n.textContent))));
+  await page.click("#hidden");
+  assert.ok(await page.$$eval(".chunk", ns => ns.length));
+  await page.screenshot({ path: "/tmp/proof-atlas-axiom-medium.png", fullPage: true });
+  const audited = JSON.parse(await readFile("/tmp/proof-atlas-axiom-graph.json", "utf8"));
+  for (const [label, audit] of [
+    ["legacy", undefined],
+    ["unknown", {status: "unknown", reason: "not recorded"}],
+    ["error", {status: "error", reason: "native collection failed"}],
+    ["malformed", {status: "collected", axioms: [], containsAdmission: true}],
+  ]) {
+    const imported = structuredClone(audited);
+    const proof = imported.evidence.declarations[0].proofStatus;
+    if (audit === undefined) { delete proof.axiomAudit; proof.transitiveTrust = "unscanned"; }
+    else proof.axiomAudit = audit;
+    const path = "/tmp/proof-atlas-audit-" + label + ".json";
+    await writeFile(path, JSON.stringify(imported));
+    await input.uploadFile(path);
+    await page.waitForFunction(name => document.querySelector("#status").textContent.startsWith(name), {}, path.split("/").at(-1));
+    assert.match(await basisText(), new RegExp("Axiom audit · " + (["legacy", "unknown"].includes(label) ? "unknown" : "error")));
+    assert.match(await basisText(), /Admission reachable.* · unknown/);
+    assert.doesNotMatch(await basisText(), /No axioms reported/);
+    assert.ok(await page.$$eval(".chunk", ns => ns.length));
+  }
   await writeFile("/tmp/proof-atlas-invalid.json", "{}");
   await input.uploadFile("/tmp/proof-atlas-invalid.json");
   await page.waitForFunction(() =>

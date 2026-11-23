@@ -28,7 +28,9 @@ Repeat `--declaration` to select several declarations in source declaration orde
 
 The exporter uses only modules in the installed Lean toolchain. Project dependency configuration is unsupported. Selection must have source information in the input file. Elaboration errors, unknown declarations, and expression or universe nesting above 512 fail with a nonzero exit code. Two exports of the same fixtures produce identical bytes.
 
-`captureStatus` describes capture of the advertised capabilities, not proof trust. Assignment witnesses, complete metavariable contexts, metadata contents, namespace/options snapshots, and transitive axiom scans are unavailable or partial. Unsupported information payloads retain occurrence placeholders and children. Direct `sorryAx` occurrences are reported separately from diagnostics. Local hypothesis presence does not establish premise use, and goal-list disappearance does not establish solving.
+`captureStatus` describes capture of the advertised capabilities, not proof trust. Assignment witnesses, complete metavariable contexts, metadata contents, and namespace/options snapshots are unavailable or partial. Unsupported information payloads retain occurrence placeholders and children. Local hypothesis presence does not establish premise use, and goal-list disappearance does not establish solving.
+
+Extractor 0.2.0 records `proofStatus.axiomAudit` using public `Lean.collectAxioms` in the final checked environment. A collected audit has sorted structural Lean Names in `axioms` and `containsAdmission` for reachable `sorryAx`; unknown/error audits carry a `reason` and no successful list. The existing `containsSorry` field scans only the declaration value for direct `sorryAx`, not its type or dependencies. Axiom collection includes types and transitive dependencies. It reports provenance under the recorded environment, not absolute truth or proof validity. Legacy unscanned artifacts remain unknown in the browser. The read-only Declaration basis panel keeps this audit separate from local goal hypotheses.
 
 Core-only integration checks cover repeated tactic executions, term-only proofs, local contexts, Unicode byte ranges, shadowed names, large literal fidelity, admission reporting, and explicit failure cases. The original experiment remains runnable.
 
@@ -89,3 +91,12 @@ node tests/web-browser.mjs
 The app bundles its dependencies and has no chat, ingestion API, or CDN runtime
 requirement. Loading a graph does not upload it. Keep competing readings separate
 from extracted facts; this slice supplies evidence inspection only.
+
+Exercise the generated induction/Boolean-branch fixture and its axiom audit locally:
+
+```sh
+python3 scripts/export_evidence.py experiments/native-extraction/AxiomAudit.lean --declaration AuditFixture.constructive --declaration AuditFixture.admitted --declaration AuditFixture.viaAdmission --declaration AuditFixture.viaAxioms --declaration AuditFixture.typeDependency --declaration AuditFixture.tallyAppend --output /tmp/axiom-evidence.json
+python3 scripts/project_graph.py /tmp/axiom-evidence.json --source experiments/native-extraction/AxiomAudit.lean --output /tmp/axiom-graph.json
+```
+
+Open `/tmp/axiom-graph.json` in the local explorer. `tallyAppend` proves two append equations by list induction and Boolean branches, reusing a local equality. Its recorded basis includes `propext` through simplification. The other declarations distinguish an empty basis, direct and reachable admission, arbitrary axioms, and an axiom in a declaration type.

@@ -254,3 +254,58 @@ export function overview(m, id, hidden = false) {
     links,
   };
 }
+
+// Match Lean.Name.cmp. Numeric components retain exact decimal values.
+function axiomNameKey(name) {
+  if (!name || typeof name !== "object" || Array.isArray(name)) throw Error();
+  if (name.tag === "anonymous" && Object.keys(name).length === 1) return [0];
+  if (!["str", "num"].includes(name.tag) ||
+      Object.keys(name).sort().join() !== "parent,tag,value" ||
+      typeof name.value !== "string") throw Error();
+  if (name.tag === "num" && !/^(0|[1-9][0-9]*)$/.test(name.value)) throw Error();
+  return [name.tag === "num" ? 1 : 2, axiomNameKey(name.parent),
+    name.tag === "num" ? BigInt(name.value) : name.value];
+}
+function compareNameStrings(a, b) {
+  const left = Array.from(a, c => c.codePointAt(0));
+  const right = Array.from(b, c => c.codePointAt(0));
+  for (let i = 0; i < Math.min(left.length, right.length); i++)
+    if (left[i] !== right[i]) return left[i] < right[i] ? -1 : 1;
+  return left.length - right.length;
+}
+function compareAxiomNames(a, b) {
+  if (a[0] !== b[0]) return a[0] < b[0] ? -1 : 1;
+  if (a[0] === 0) return 0;
+  const parent = compareAxiomNames(a[1], b[1]);
+  return parent || (a[0] === 2 ? compareNameStrings(a[2], b[2]) :
+    a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0);
+}
+export function declarationBasis(declaration) {
+  const proof = declaration?.proofStatus;
+  const directAdmission = typeof proof?.containsSorry === "boolean" ? proof.containsSorry : null;
+  const unavailable = (status, reason) => ({
+    status, reason, axioms: null, containsAdmission: null, directAdmission,
+  });
+  if (!proof || !Object.hasOwn(proof, "axiomAudit"))
+    return unavailable("unknown", "No recorded axiom audit. Legacy captures may be unscanned.");
+  const audit = proof.axiomAudit;
+  try {
+    if (!audit || typeof audit !== "object" || Array.isArray(audit)) throw Error();
+    if (["unknown", "error"].includes(audit.status)) {
+      if (Object.keys(audit).sort().join() !== "reason,status" ||
+          typeof audit.reason !== "string" || !audit.reason.trim()) throw Error();
+      return unavailable(audit.status, audit.reason);
+    }
+    if (audit.status !== "collected" ||
+        Object.keys(audit).sort().join() !== "axioms,containsAdmission,status" ||
+        !Array.isArray(audit.axioms) || typeof audit.containsAdmission !== "boolean") throw Error();
+    const keys = audit.axioms.map(axiomNameKey);
+    if (keys.some((key, i) => i > 0 && compareAxiomNames(keys[i-1], key) >= 0)) throw Error();
+    const reached = audit.axioms.some(n => n.tag === "str" && n.value === "sorryAx" && n.parent.tag === "anonymous");
+    if (reached !== audit.containsAdmission) throw Error();
+    return { status: "collected", axioms: audit.axioms,
+      containsAdmission: audit.containsAdmission, directAdmission };
+  } catch {
+    return unavailable("error", "Malformed axiom audit metadata.");
+  }
+}

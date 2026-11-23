@@ -160,6 +160,18 @@ partial def visit (tree : InfoTree) (ctx : Option ContextInfo) (id : String) (pa
     modify fun s => {s with roots := s.roots ++ childIds}
     return none
 
+def axiomAudit (env : Environment) (n : Name) : IO Json := do
+  if (env.checked.get.find? n).isNone then
+    return obj [("status", str "unknown"), ("reason", str "Declaration absent from checked environment")]
+  try
+    let axioms ← Lean.Core.CoreM.toIO' (Lean.collectAxioms n)
+      { fileName := "<axiom-audit>", fileMap := default } { env := env }
+    let axioms := axioms.qsort Name.lt
+    return obj [("status", str "collected"), ("axioms", arr (axioms.map nameJson)),
+      ("containsAdmission", toJson (axioms.contains ``sorryAx))]
+  catch error =>
+    return obj [("status", str "error"), ("reason", str error.toString)]
+
 unsafe def main (args : List String) : IO Unit := do
   let path := args.headD ""
   let selected := args.drop 1 |>.map String.toName
@@ -188,7 +200,7 @@ unsafe def main (args : List String) : IO Unit := do
       let typ ← expression ci.type cid
       let value ← (ci.value? true).mapM (fun e => expression e cid)
       let containsSorry := (ci.value? true).any (fun e => (e.find? (fun e => e.isConstOf ``sorryAx)).isSome)
-      decls := decls.push (obj [("id", str n.toString), ("name", nameJson n), ("typeExpressionId", str typ), ("valueExpressionId", toJson value), ("proofStatus", obj [("kind", str (if ci.isAxiom then "axiom" else if ci.isTheorem then "theorem" else "definition")), ("containsSorry", toJson containsSorry), ("transitiveTrust", str "unscanned")])])
+      decls := decls.push (obj [("id", str n.toString), ("name", nameJson n), ("typeExpressionId", str typ), ("valueExpressionId", toJson value), ("proofStatus", obj [("kind", str (if ci.isAxiom then "axiom" else if ci.isTheorem then "theorem" else "definition")), ("containsSorry", toJson containsSorry), ("axiomAudit", ← axiomAudit final.commandState.env n)])])
     return decls : CaptureM (Array Json)).run {}
   IO.println (Json.compress (obj [("importedModules", toJson (final.commandState.env.header.moduleNames.toList.map Name.toString)), ("declarations", arr decls), ("records", arr captured.records), ("contexts", arr captured.contexts), ("expressions", arr captured.expressions), ("goalSnapshots", arr captured.snapshots), ("infoRoots", arr captured.roots), ("goals", arr (captured.goals.mapIdx fun i _ => obj [("id", str ("g" ++ toString i)), ("contextCoverage", str "snapshots-only")])), ("symbols", arr (captured.symbols.mapIdx fun i _ => obj [("id", str ("v" ++ toString i))])), ("universeMetavariables", arr (captured.universes.mapIdx fun i _ => obj [("id", str ("u" ++ toString i))])), ("diagnostics", arr diagnostics)]))
 end ProofAtlas

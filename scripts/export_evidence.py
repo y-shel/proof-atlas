@@ -17,6 +17,38 @@ class EvidenceError(ValueError):
     pass
 
 
+def _name_key(name):
+    if not isinstance(name, dict):
+        raise EvidenceError('Invalid axiom Name')
+    tag = name.get('tag')
+    if tag == 'anonymous' and set(name) == {'tag'}:
+        return (0,)
+    if tag not in ('str', 'num') or set(name) != {'tag', 'parent', 'value'}:
+        raise EvidenceError('Invalid axiom Name')
+    value = name['value']
+    if not isinstance(value, str) or (tag == 'num' and (not value.isascii() or not value.isdecimal() or str(int(value)) != value)):
+        raise EvidenceError('Invalid axiom Name component')
+    return (2 if tag == 'str' else 1, _name_key(name['parent']), value if tag == 'str' else int(value))
+
+
+def validate_axiom_audit(audit):
+    if not isinstance(audit, dict):
+        raise EvidenceError('Invalid axiom audit')
+    status = audit.get('status')
+    if status in ('unknown', 'error'):
+        if set(audit) != {'status', 'reason'} or not isinstance(audit['reason'], str) or not audit['reason'].strip():
+            raise EvidenceError('Invalid unavailable axiom audit')
+        return
+    if status != 'collected' or set(audit) != {'status', 'axioms', 'containsAdmission'} or not isinstance(audit['axioms'], list) or type(audit['containsAdmission']) is not bool:
+        raise EvidenceError('Invalid collected axiom audit')
+    keys = [_name_key(name) for name in audit['axioms']]
+    if keys != sorted(set(keys)):
+        raise EvidenceError('Axiom Names must be distinct and structurally sorted')
+    admission = {'tag': 'str', 'parent': {'tag': 'anonymous'}, 'value': 'sorryAx'}
+    if audit['containsAdmission'] != (admission in audit['axioms']):
+        raise EvidenceError('Admission flag differs from collected axioms')
+
+
 def validate_evidence(data: dict, source: bytes) -> None:
     """Reject broken references, invalid scopes, and out-of-bounds source ranges."""
     def ref(table, value):
@@ -113,6 +145,8 @@ def validate_evidence(data: dict, source: bytes) -> None:
 
     levels(data['expressions'])
     for decl in data['declarations']:
+        if 'axiomAudit' in decl.get('proofStatus', {}):
+            validate_axiom_audit(decl['proofStatus']['axiomAudit'])
         ref('expressions', decl['typeExpressionId'])
         ref('expressions', decl['valueExpressionId'])
 
@@ -146,11 +180,11 @@ def export_evidence(source: Path, declarations: list[str]) -> dict:
     version = subprocess.run(['lean', '+' + TOOLCHAIN, '--version'], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
     data.update({
         'schemaVersion': 'proof-atlas.evidence.v0',
-        'extractorVersion': '0.1.0',
+        'extractorVersion': '0.2.0',
         'project': {'sourcePath': source_path, 'sourceSha256': hashlib.sha256(content).hexdigest(), 'sourceByteLength': len(content), 'toolchain': TOOLCHAIN, 'leanVersion': version, 'dependencyIdentity': {'status': 'toolchain-only', 'projectDependencies': 'unsupported'}, 'elaborationOptions': {'Elab.async': False}},
         'requestedDeclarations': declarations,
         'captureStatus': 'partial' if any(r['kind'] in ('hole', 'partialTerm') for r in data['records'].values()) else 'complete',
-        'capabilities': {'tacticRecords': True, 'termRecords': True, 'sourceClassifications': True, 'structuredExpressions': True, 'diagnostics': True, 'goalAssignments': 'unavailable', 'metavariableContexts': 'snapshot-targets-and-locals-only', 'metadata': 'omitted-with-marker', 'unsupportedInfoPayloads': 'placeholders', 'namespaceOptions': 'unavailable', 'transitiveProofTrust': 'unscanned', 'imports': 'installed-toolchain-only'},
+        'capabilities': {'tacticRecords': True, 'termRecords': True, 'sourceClassifications': True, 'structuredExpressions': True, 'diagnostics': True, 'goalAssignments': 'unavailable', 'metavariableContexts': 'snapshot-targets-and-locals-only', 'metadata': 'omitted-with-marker', 'unsupportedInfoPayloads': 'placeholders', 'namespaceOptions': 'unavailable', 'axiomAudit': 'lean-collectAxioms.checked-environment.v1', 'imports': 'installed-toolchain-only'},
         'captureLimits': {'expressionTraversalDepth': 512, 'universeTraversalDepth': 512, 'onLimit': 'fail', 'projectCoverage': 'core-only-tested'},
     })
     for diagnostic in data['diagnostics']:

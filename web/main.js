@@ -1,6 +1,7 @@
 import "./style.css";
 import {
   loadGraph,
+  declarationBasis,
   sourceParts,
   overview,
   witnessValue,
@@ -45,6 +46,7 @@ async function open(data, name) {
 }
 function update() {
   if (!model) return;
+  renderBasis();
   view = overview(model, $("declaration").value, $("hidden").checked);
   graph.setView(view, model.graph.artifactId + ":" + $("declaration").value);
   $("count").textContent = view.nodes.length + " chunks · source grouping only";
@@ -70,6 +72,22 @@ function update() {
   );
   if (!view.nodes.some((n) => n.id === current)) current = view.nodes[0]?.id;
   selectChunk(current);
+}
+function renderBasis() {
+  const declaration = model.declarations.find(d => d.id === $("declaration").value);
+  const basis = declarationBasis(declaration);
+  const panel = $("basis");
+  panel.replaceChildren(el("h2", "Declaration basis"));
+  panel.append(el("p", "Axiom audit · " + basis.status));
+  panel.append(el("p", "Reported provenance under the recorded formal environment. Local goal hypotheses are shown with each goal."));
+  const state = value => value === null ? "unknown" : value ? "yes" : "no";
+  panel.append(el("p", "Direct sorryAx occurrence in declaration value · " + state(basis.directAdmission)));
+  panel.append(el("p", "Admission reachable through declaration types, values and dependencies · " + state(basis.containsAdmission)));
+  if (basis.status === "collected") {
+    panel.append(el("p", basis.axioms.length ? "Reported axiom Names" : "No axioms reported by this collection."));
+    for (const name of basis.axioms) panel.append(el("pre", JSON.stringify(name)));
+  } else panel.append(el("p", basis.reason));
+  details(panel, "Recorded declaration provenance", declaration?.proofStatus ?? {});
 }
 function selectChunk(id) {
   if (!model) return;
