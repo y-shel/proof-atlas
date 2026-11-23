@@ -36,7 +36,8 @@ header span {
 button,
 .file,
 select,
-#packet-budget {
+#packet-budget,
+#evidence-budget {
   font: inherit;
   color: inherit;
   background: #1b2c43;
@@ -45,7 +46,8 @@ select,
   padding: 10px 12px;
   cursor: pointer;
 }
-#packet-budget {
+#packet-budget,
+#evidence-budget {
   width: 100%;
   margin: 8px 0;
   cursor: text;

@@ -8,11 +8,13 @@ import {
 } from "./graph-model.js";
 import { createCanvas } from "./graph-canvas.js";
 import { buildContextPacket, serializeContextPacket, contextPacketBytes } from "./context-packet.js";
+import { resolveEvidence, serializeEvidenceResult, evidenceResultBytes } from "./evidence-resolver.js";
 const $ = (id) => document.getElementById(id);
 let model = null,
   view = null,
   current = null,
-  packetText = null;
+  packetText = null,
+  packetAnchors = [];
 const graph = createCanvas($("graph"), selectChunk);
 function el(tag, text) {
   const n = document.createElement(tag);
@@ -26,6 +28,7 @@ function details(parent, title, data) {
   parent.append(d);
 }
 async function open(data, name) {
+  clearEvidence();
   try {
     const next = await loadGraph(data);
     model = next;
@@ -218,6 +221,7 @@ function selectChunk(id) {
   details($("inspector"), "Full immutable graph artifact", model.graph);
 }
 function renderPacket() {
+  clearEvidence();
   packetText = null;
   $("packet-download").disabled = true;
   $("packet-preview").textContent = "";
@@ -229,6 +233,18 @@ function renderPacket() {
     const bound = Number($("packet-budget").value);
     const packet = buildContextPacket(model, current, { maxBytes: bound });
     packetText = serializeContextPacket(packet);
+    packetAnchors = [
+      ...(packet.citations ?? []).map(anchor => ({ anchor, kind: "Citation" })),
+      ...(packet.retrieval ?? []).map(anchor => ({ anchor, kind: "Retrieval" })),
+    ];
+    $("evidence-anchor").replaceChildren(...packetAnchors.map(({ anchor, kind }, i) => {
+      const option = el("option", kind + " · " + JSON.stringify(anchor.path));
+      option.value = String(i);
+      return option;
+    }));
+    $("evidence-anchor").disabled = !packetAnchors.length;
+    $("evidence-inspect").disabled = !packetAnchors.length;
+    $("evidence-status").textContent = packetAnchors.length ? "Choose an exact anchor to inspect." : "No packet anchors available.";
     $("packet-preview").textContent = packetText;
     $("packet-status").textContent = packet.status + " · " + contextPacketBytes(packet) + " / " + bound + " bytes" + (packet.requiredBytes ? " · complete context requires " + packet.requiredBytes + " bytes" : "") + (packet.reason ? " · " + packet.reason : "");
     $("packet-download").disabled = false;
@@ -236,6 +252,32 @@ function renderPacket() {
     $("packet-status").textContent = error.message;
   }
 }
+function clearEvidence() {
+  packetAnchors = [];
+  $("evidence-anchor").replaceChildren();
+  $("evidence-anchor").disabled = true;
+  $("evidence-inspect").disabled = true;
+  clearEvidenceResult();
+}
+function clearEvidenceResult() {
+  $("evidence-result").textContent = "";
+  $("evidence-status").textContent = "Choose an exact anchor to inspect.";
+}
+$("evidence-anchor").onchange = clearEvidenceResult;
+$("evidence-budget").oninput = clearEvidenceResult;
+$("evidence-inspect").onclick = () => {
+  clearEvidenceResult();
+  const selected = packetAnchors[Number($("evidence-anchor").value)];
+  if (!model || !selected) return;
+  try {
+    const bound = Number($("evidence-budget").value);
+    const result = resolveEvidence(model, selected.anchor, { maxBytes: bound });
+    $("evidence-result").textContent = serializeEvidenceResult(result);
+    $("evidence-status").textContent = result.status + " · " + evidenceResultBytes(result) + " / " + bound + " bytes" + (result.requiredBytes ? " · exact value requires " + result.requiredBytes + " bytes" : "") + (result.reason ? " · " + result.reason : "");
+  } catch (error) {
+    $("evidence-status").textContent = error.message;
+  }
+};
 $("packet-build").onclick = renderPacket;
 $("packet-download").onclick = () => {
   if (!packetText) return;

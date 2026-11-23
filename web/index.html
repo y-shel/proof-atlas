@@ -63,6 +63,17 @@
           <p id="packet-status" role="status">Select a source chunk.</p>
           <details><summary>Read packet JSON</summary><pre id="packet-preview"></pre></details>
         </section>
+        <section aria-label="Exact evidence retrieval">
+          <h3>Inspect an exact evidence anchor</h3>
+          <p>Choose a packet citation or retrieval entry. This reads one saved value without changing the selected chunk.</p>
+          <label for="evidence-anchor">Packet anchor</label>
+          <select id="evidence-anchor" disabled></select>
+          <label for="evidence-budget">Retrieval UTF-8 byte bound, including final newline</label>
+          <input id="evidence-budget" type="number" min="1" step="1" value="131072" />
+          <button id="evidence-inspect" disabled>Inspect anchor</button>
+          <p id="evidence-status" role="status">Build a packet to list its anchors.</p>
+          <pre id="evidence-result"></pre>
+        </section>
         <div id="inspector"></div>
       </aside>
     </main>

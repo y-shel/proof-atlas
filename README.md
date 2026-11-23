@@ -133,3 +133,39 @@ The default bound is 128 KiB of canonical UTF-8 JSON, including its final newlin
 the status envelope fails explicitly. The generated medium fixture's `have shared`
 chunk needs about 150 KiB; a 256 KiB bound includes it without changing its boundary.
 The selected source fragment is included, rather than the full source or graph.
+
+## Exact evidence retrieval
+
+The explorer lists the selected packet's citations and retrieval entries, including
+anchors from an over-limit packet. Choose an anchor and inspect its exact saved
+value with a separate byte bound. Inspection leaves chunk selection and graph
+camera unchanged. Results clear when the graph, selection or anchor changes.
+
+```sh
+node scripts/resolve_evidence.mjs /tmp/repeated-graph.json \
+  --anchor /tmp/anchor.json --output /tmp/result.json --max-bytes 131072
+node tests/evidence-resolver.test.js
+# With a local production preview running:
+node tests/evidence-resolver-browser.mjs
+```
+
+An anchor is `{"artifactId":"sha256:…","path":["chunks",0]}`. Packet citation
+and retrieval objects work directly; their other fields do not affect resolution.
+Paths use exact object string keys and numeric array indices. They do not parse
+JSONPath, coerce keys, follow inherited properties, or accept prototype keys.
+
+`web/evidence-resolver.js` exports `resolveEvidence(model, anchor, {maxBytes})`,
+`serializeEvidenceResult` and `evidenceResultBytes`. It requires a model returned
+by `loadGraph` with matching saved artifact identities. The default is 128 KiB.
+Ready results contain a detached exact value, citation, scope, capture limits and
+capabilities. Null and other scalar values remain available. Over-limit results
+report the complete result's required bytes and contain no partial value.
+Unavailable results give a reason. All bounds include canonical UTF-8 JSON and
+the final newline; a bound too small for the status envelope throws.
+
+The shared result labels the library's `loadGraph` verification tier. Browser
+loading does not reconstruct the artifact hash or complete projection semantics.
+The CLI additionally validates the complete projection against the same once-read
+graph before retrieval and reports that check on stderr. It guards both input
+files against output overwrite, including symbolic and hard links. Neither path
+replays Lean or adds an interpretation of the proof.
